@@ -64,9 +64,9 @@ grpRisk = "6 · Gestion du risque"
 rr       = input.float(2.0, "Ratio Risque/Rendement (TP2)", minval=1.0, step=0.5, group=grpRisk)
 tp1R     = input.float(1.0, "Niveau TP1 partiel (en R)", minval=0.5, step=0.25, group=grpRisk)
 partPct  = input.float(25.0, "% pris au TP1 (BE + partiel)", minval=1, maxval=99, group=grpRisk)
-bufMode  = input.string("ATR", "Buffer du stop", options=["ATR", "Ticks"], group=grpRisk)
-bufATR   = input.float(0.15, "Buffer stop (× ATR14)", minval=0, step=0.05, group=grpRisk)
-bufTicks = input.int(5, "Buffer stop (ticks)", minval=0, group=grpRisk)
+bufMode  = input.string("ATR", "Buffer du stop sous/au-dessus du FVG", options=["ATR", "Ticks"], group=grpRisk)
+bufATR   = input.float(0.10, "Buffer stop (× ATR14)", minval=0, step=0.05, group=grpRisk)
+bufTicks = input.int(3, "Buffer stop (ticks)", minval=0, group=grpRisk)
 projLen  = input.int(40, "Longueur projection des niveaux (bougies)", minval=5, group=grpRisk)
 
 grpUI   = "7 · Affichage"
@@ -281,7 +281,7 @@ f_drawTrade(_isLong, _entry, _stop) =>
     line.new(bar_index, tp1,    x2, tp1,    color=color.new(color.orange, 0), style=line.style_dotted, width=1)
     line.new(bar_index, tp2,    x2, tp2,    color=color.new(colBull, 0), style=line.style_dashed, width=1)
     // Labels
-    label.new(x2, _entry, "Entrée " + str.tostring(_entry, format.mintick), style=label.style_label_left,
+    label.new(x2, _entry, "Entrée limit " + str.tostring(_entry, format.mintick), style=label.style_label_left,
          color=color.new(color.blue, 0), textcolor=color.white, size=size.small)
     label.new(x2, _stop, "SL " + str.tostring(_stop, format.mintick), style=label.style_label_left,
          color=color.new(colBear, 0), textcolor=color.white, size=size.small)
@@ -291,8 +291,8 @@ f_drawTrade(_isLong, _entry, _stop) =>
          color=color.new(colBull, 0), textcolor=color.white, size=size.small)
 
 if longSignal
-    entry = close
-    stop  = math.min(low, low[1], low[2]) - buffer
+    entry = low            // bord d'entrée du FVG M15 (haut du gap) → ordre limit
+    stop  = high[2] - buffer   // juste sous le FVG (borne basse = high[2])
     if stop < entry
         f_drawTrade(true, entry, stop)
         label.new(bar_index, low, "▲ LONG", style=label.style_label_up, color=color.new(colBull, 0),
@@ -300,8 +300,8 @@ if longSignal
         h4BullUsed := true
 
 if shortSignal
-    entry = close
-    stop  = math.max(high, high[1], high[2]) + buffer
+    entry = high           // bord d'entrée du FVG M15 (bas du gap) → ordre limit
+    stop  = low[2] + buffer    // juste au-dessus du FVG (borne haute = low[2])
     if stop > entry
         f_drawTrade(false, entry, stop)
         label.new(bar_index, high, "▼ SHORT", style=label.style_label_down, color=color.new(colBear, 0),

@@ -29,7 +29,7 @@ Indicateur **Pine Script v6** qui automatise une stratégie ICT complète.
 1. Détection d'un **FVG H4** dans le sens du biais (structure BOS ou EMA HTF).
 2. Attente du **tap** de la zone H4 (le prix revient dans le FVG).
 3. Recherche d'un **FVG M15** dans le même sens, **en Killzone**, du bon côté du 50%.
-4. Placement d'un trade avec **RR 1:2** (paramétrable).
+4. Niveau d'**entrée limit au bord du FVG M15** (haut du gap pour un long, bas pour un short), **SL juste sous/au-dessus du FVG**, **RR 1:2** (paramétrable).
 5. **TP1 à 1R** → matérialisé pour passer en **Break Even + 25%** de partiel.
 6. **TP2 à 2R** (liquidité externe / ERL).
 
