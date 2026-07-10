@@ -43,4 +43,25 @@ L'indicateur trace les zones FVG, le dealing range + 50%, les killzones ombrées
 
 > Note anti-repaint : les FVG H4 ne sont validés que sur bougie H4 clôturée, et les signaux sur bougie M15 clôturée.
 
+## Stratégie backtestable — `ict_irl_erl_fvg_strategy.pine`
+
+Version **`strategy()`** de la même logique, avec exécution réaliste :
+
+- **Entrée par ordre LIMIT au bord du FVG M15** (bord proximal) :
+  - Long : limit au **haut** du FVG, SL juste **sous** le FVG.
+  - Short : limit au **bas** du FVG, SL juste **au-dessus** du FVG.
+- **TP1 à 1R** → prise partielle 25% + passage automatique en **Break Even**.
+- **TP2 à 2R** sur le reste.
+- **Sizing par risque** : `Risque par trade (%)` → la taille est calculée pour risquer X% du capital jusqu'au SL.
+- **Expiration** de l'ordre limit non rempli après N bougies (annulation).
+- Testable dans le **Strategy Tester** (winrate, drawdown, profit factor, prise partielle réelle).
+
+### Automatisation broker (Vantage / Eightcap)
+TradingView **n'envoie pas** automatiquement les ordres d'une stratégie Pine à un broker. Deux voies :
+
+1. **Manuel assisté** : connecter Vantage / Eightcap à TradingView (panneau *Trading*) et exécuter à la main sur signal/alerte. Simple, aucun intermédiaire.
+2. **Auto par webhook** : créer une alerte *« alert() function calls only »* ; la stratégie émet déjà un **payload JSON** (`action`, `symbol`, `order`, `price`, `sl`, `tp`) prêt à être envoyé à un pont webhook (bridge) qui relaie vers l'API du broker. Nécessite un service intermédiaire (bridge) car ni Vantage ni Eightcap n'exécutent nativement un webhook TradingView.
+
+> Rappel : les résultats de backtest ne garantissent pas les performances futures. Le trading comporte un risque de perte en capital.
+
 > Avertissement : le trading comporte un risque de perte en capital. IA Trading fournit des outils d'aide à la décision et ne constitue pas un conseil en investissement.
