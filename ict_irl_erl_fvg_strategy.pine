@@ -79,7 +79,13 @@ riskPct   = input.float(1.0, "Risque par trade (% du capital)", minval=0.1, step
 expiryBars= input.int(12, "Expiration de l'ordre limit (bougies M15)", minval=1, group=grpRisk,
      tooltip="Annule l'ordre limit s'il n'est pas rempli après N bougies.")
 
-grpUI   = "7 · Affichage"
+grpBT   = "7 · Fenêtre de backtest"
+useDates = input.bool(true, "Limiter le backtest à une période", group=grpBT,
+     tooltip="Active pour ne tester que sur la fenêtre choisie (ex : 6 derniers mois).")
+startDate= input.time(timestamp("10 Jan 2026 00:00 +0000"), "Début", group=grpBT)
+endDate  = input.time(timestamp("10 Jul 2026 00:00 +0000"), "Fin",   group=grpBT)
+
+grpUI   = "8 · Affichage"
 showDash = input.bool(true, "Afficher le tableau de bord", group=grpUI)
 drawLvls = input.bool(true, "Tracer les niveaux Entrée/SL/TP", group=grpUI)
 colBull  = input.color(color.new(#26a69a, 0), "Couleur haussière", group=grpUI)
@@ -286,8 +292,10 @@ buffer = bufMode == "ATR" ? bufATR * atr14 : bufTicks * syminfo.mintick
 pdOkLong  = not usePD or inDiscount
 pdOkShort = not usePD or inPremium
 
-longSetup  = isBull and h4BullValid and h4BullTapped and m15BullFVG and inKZ and pdOkLong  and barstate.isconfirmed
-shortSetup = isBear and h4BearValid and h4BearTapped and m15BearFVG and inKZ and pdOkShort and barstate.isconfirmed
+inWindow = not useDates or (time >= startDate and time <= endDate)
+
+longSetup  = isBull and h4BullValid and h4BullTapped and m15BullFVG and inKZ and pdOkLong  and inWindow and barstate.isconfirmed
+shortSetup = isBear and h4BearValid and h4BearTapped and m15BearFVG and inKZ and pdOkShort and inWindow and barstate.isconfirmed
 
 // ─────────────────────────────────────────────────────────────────────────────────────
 //  MOTEUR D'ORDRES  (limit au bord du FVG, SL sous/au-dessus du FVG)
