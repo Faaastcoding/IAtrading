@@ -62,6 +62,36 @@ TradingView **n'envoie pas** automatiquement les ordres d'une stratégie Pine à
 1. **Manuel assisté** : connecter Vantage / Eightcap à TradingView (panneau *Trading*) et exécuter à la main sur signal/alerte. Simple, aucun intermédiaire.
 2. **Auto par webhook** : créer une alerte *« alert() function calls only »* ; la stratégie émet déjà un **payload JSON** (`action`, `symbol`, `order`, `price`, `sl`, `tp`) prêt à être envoyé à un pont webhook (bridge) qui relaie vers l'API du broker. Nécessite un service intermédiaire (bridge) car ni Vantage ni Eightcap n'exécutent nativement un webhook TradingView.
 
-> Rappel : les résultats de backtest ne garantissent pas les performances futures. Le trading comporte un risque de perte en capital.
+## Exécution automatique MetaTrader 5 — `ICT_IRL_ERL_FVG_EA.mq5`
+
+**Expert Advisor (EA) MQL5** qui exécute la stratégie **automatiquement sur MT5** : il analyse tout seul (FVG H4, tap, FVG M15, Killzone, Premium/Discount), et **place l'ordre limit + SL + TP** dès que toutes les conditions sont confirmées, puis gère **BE + prise partielle 25% à 1R** et vise **2R**.
+
+### Ce que fait l'EA
+- Biais H4 (structure BOS ou EMA), zone FVG H4 + détection du tap.
+- FVG M15 dans le sens du biais, filtre Killzone (heures serveur) + Premium/Discount.
+- **Ordre LIMIT au bord du FVG**, SL juste sous/au-dessus du FVG, **sizing par risque (% du solde)**.
+- À **1R** : prise partielle 25% + passage **Break Even** automatique. Sortie du reste à **2R**.
+- Un seul trade à la fois (par `Magic number`), garde-fou spread, expiration de l'ordre limit.
+
+### Installation
+1. Ouvre **MetaEditor** (bouton dans MT5, ou touche F4).
+2. `Fichier → Nouveau → Expert Advisor`, ou copie `ICT_IRL_ERL_FVG_EA.mq5` dans `MQL5/Experts/`.
+3. Colle le code → **Compiler** (F7). Zéro erreur attendue.
+4. Dans MT5, glisse l'EA sur un graphique **M15** de ta paire.
+5. Coche **« Autoriser l'Algo Trading »** (bouton *Algo Trading* en haut) et dans les propriétés de l'EA.
+
+### Backtest (règle aussi la demande de backtest 6 mois)
+- Dans MT5 : `Affichage → Testeur de stratégie` (Ctrl+R) → choisis l'EA, le symbole, **M15**, la période (6 mois), modèle *« Chaque tick basé sur les ticks réels »*.
+- Résultats natifs : profit net, drawdown, profit factor, courbe d'equity, détail des trades.
+
+### Pour tourner 24/7
+- L'EA doit rester actif : utilise un **VPS** (Eightcap et Vantage en proposent souvent un gratuit) pour garder MT5 ouvert en permanence.
+
+### Réglages à vérifier en priorité
+- **Killzones** : les heures sont en **heure SERVEUR du broker** (souvent GMT+2/+3). Vérifie l'heure de ton serveur MT5 et ajuste `London/NY` en conséquence.
+- **Risque** : `Risque par trade (%)` du solde (défaut 1%).
+- Commence avec `Trading activé = false` pour observer, puis passe en **compte DÉMO** avant tout compte réel.
+
+> ⚠️ Cet EA place de vrais ordres. **Teste impérativement sur compte démo** d'abord. Les résultats de backtest ne garantissent pas les performances futures. Le trading comporte un risque de perte en capital.
 
 > Avertissement : le trading comporte un risque de perte en capital. IA Trading fournit des outils d'aide à la décision et ne constitue pas un conseil en investissement.
