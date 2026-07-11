@@ -346,6 +346,26 @@ plotshape(h4BearValid and h4BearTapped and not h4BearTapped[1] ? high : na, "Tap
 // ─────────────────────────────────────────────────────────────────────────────────────
 //  ALERTES
 // ─────────────────────────────────────────────────────────────────────────────────────
+// Alerte demandée : FVG M15 formé PENDANT une Killzone (l'instant où le gap se trace)
+m15BullKZ = m15BullFVG and inKZ and barstate.isconfirmed
+m15BearKZ = m15BearFVG and inKZ and barstate.isconfirmed
+m15FvgKZ  = m15BullKZ or m15BearKZ
+
+alertcondition(m15FvgKZ, "FVG M15 en Killzone",
+     "FVG M15 en Killzone sur {{ticker}} {{interval}} @ {{close}}")
+
+if m15FvgKZ
+    dirTxt = m15BullKZ ? "HAUSSIER" : "BAISSIER"
+    dirEmo = m15BullKZ ? "🟢" : "🔴"
+    alert(dirEmo + " FVG M15 en Killzone (" + dirTxt + ")" +
+         "\nActif : " + syminfo.ticker + "  (" + timeframe.period + ")" +
+         "\nPrix : " + str.tostring(close, format.mintick) +
+         "\nBiais H4 : " + (isBull ? "haussier" : isBear ? "baissier" : "neutre") +
+         "\nZone H4 : " + (m15BullKZ ? (h4BullTapped ? "tapée ✓" : "non tapée") :
+                                       (h4BearTapped ? "tapée ✓" : "non tapée")),
+         alert.freq_once_per_bar_close)
+
+// Alertes de setup complet (entrée)
 alertcondition(longSignal,  "ICT LONG",  "Signal LONG ICT : FVG H4 tapé + FVG M15 en Killzone (Discount).")
 alertcondition(shortSignal, "ICT SHORT", "Signal SHORT ICT : FVG H4 tapé + FVG M15 en Killzone (Premium).")
 

@@ -297,6 +297,21 @@ inWindow = not useDates or (time >= startDate and time <= endDate)
 longSetup  = isBull and h4BullValid and h4BullTapped and m15BullFVG and inKZ and pdOkLong  and inWindow and barstate.isconfirmed
 shortSetup = isBear and h4BearValid and h4BearTapped and m15BearFVG and inKZ and pdOkShort and inWindow and barstate.isconfirmed
 
+// Alerte Telegram : FVG M15 formé pendant une Killzone (l'instant où le gap se trace)
+m15BullKZ = m15BullFVG and inKZ and barstate.isconfirmed
+m15BearKZ = m15BearFVG and inKZ and barstate.isconfirmed
+m15FvgKZ  = m15BullKZ or m15BearKZ
+alertcondition(m15FvgKZ, "FVG M15 en Killzone",
+     "FVG M15 en Killzone sur {{ticker}} {{interval}} @ {{close}}")
+if m15FvgKZ
+    dirEmo = m15BullKZ ? "🟢" : "🔴"
+    dirTxt = m15BullKZ ? "HAUSSIER" : "BAISSIER"
+    alert(dirEmo + " FVG M15 en Killzone (" + dirTxt + ")" +
+         "\nActif : " + syminfo.ticker + "  (" + timeframe.period + ")" +
+         "\nPrix : " + str.tostring(close, format.mintick) +
+         "\nBiais H4 : " + (isBull ? "haussier" : isBear ? "baissier" : "neutre"),
+         alert.freq_once_per_bar_close)
+
 // ─────────────────────────────────────────────────────────────────────────────────────
 //  MOTEUR D'ORDRES  (limit au bord du FVG, SL sous/au-dessus du FVG)
 // ─────────────────────────────────────────────────────────────────────────────────────

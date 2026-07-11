@@ -43,6 +43,18 @@ L'indicateur trace les zones FVG, le dealing range + 50%, les killzones ombrées
 
 > Note anti-repaint : les FVG H4 ne sont validés que sur bougie H4 clôturée, et les signaux sur bougie M15 clôturée.
 
+### Alertes Telegram (FVG M15 en Killzone)
+L'indicateur émet une alerte **`FVG M15 en Killzone`** au moment exact où un FVG M15 se trace pendant une killzone (message prêt avec direction, actif, prix, biais H4, état de la zone).
+
+TradingView n'envoie pas vers Telegram directement : un petit relais webhook est fourni (`telegram_relay.py`).
+
+1. Crée un bot avec **@BotFather** (`/newbot`) → récupère le **TOKEN**.
+2. Récupère ton **chat_id** via `https://api.telegram.org/bot<TOKEN>/getUpdates`.
+3. `pip install -r requirements.txt`, définis `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `WEBHOOK_SECRET`, puis `python telegram_relay.py`.
+4. Sur TradingView (plan **Pro** requis pour les webhooks), alerte `FVG M15 en Killzone` → **Webhook URL** = `http://TON_IP:PORT/webhook?secret=...`.
+
+> Sans TradingView Pro : l'EA MT5 peut envoyer les messages Telegram directement (WebRequest), sans serveur — à activer sur demande.
+
 ## Stratégie backtestable — `ict_irl_erl_fvg_strategy.pine`
 
 Version **`strategy()`** de la même logique, avec exécution réaliste :
