@@ -81,9 +81,20 @@ TradingView **n'envoie pas** automatiquement les ordres d'une stratégie Pine à
 ### Ce que fait l'EA
 - Biais H4 (structure BOS ou EMA), zone FVG H4 + détection du tap.
 - FVG M15 dans le sens du biais, filtre Killzone (heures serveur) + Premium/Discount.
-- **Ordre LIMIT au bord du FVG**, SL juste sous/au-dessus du FVG, **sizing par risque (% du solde)**.
+- **Alerte Telegram** dès que toutes les confirmations sont réunies (mode par défaut : **alerte seule**, aucun trade).
+- **Ordre LIMIT au bord du FVG** + SL + TP, **sizing par risque (% du solde)** — uniquement si `Trading auto` est activé.
 - À **1R** : prise partielle 25% + passage **Break Even** automatique. Sortie du reste à **2R**.
 - Un seul trade à la fois (par `Magic number`), garde-fou spread, expiration de l'ordre limit.
+
+### Alertes Telegram directes (sans TradingView, sans serveur)
+L'EA appelle l'API Telegram lui-même — **aucun abonnement TradingView, aucun relais** requis.
+1. Crée un bot avec **@BotFather** (`/newbot`) → récupère le **TOKEN**.
+2. Récupère ton **chat_id** via `https://api.telegram.org/bot<TOKEN>/getUpdates`.
+3. Dans MT5 : `Outils → Options → Expert Advisors` → coche **« Autoriser WebRequest »** et ajoute l'URL `https://api.telegram.org`.
+4. Sur l'EA : renseigne `Token du bot` et `Chat ID`, laisse `Trading auto = false` pour n'avoir **que les alertes**.
+5. Au démarrage, un message test est envoyé pour vérifier le câblage.
+
+> `Trading auto = false` (défaut) = l'EA **analyse et alerte uniquement**, il ne place aucun ordre. Passe-le à `true` seulement quand tu veux l'exécution automatique.
 
 ### Installation
 1. Ouvre **MetaEditor** (bouton dans MT5, ou touche F4).

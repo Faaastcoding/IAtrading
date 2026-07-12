@@ -33,9 +33,16 @@ COrderInfo     ordInfo;
 //====================================================================
 input group "== Général =="
 input long    InpMagic            = 20260711;   // Magic number (identifiant de l'EA)
-input bool    InpTradingEnabled   = true;       // Trading activé (false = analyse seule)
+input bool    InpTradingEnabled   = false;      // Trading auto activé (false = ALERTE SEULE)
 input int     InpMaxSpreadPoints  = 40;         // Spread max autorisé (points, 0 = off)
 input string  InpComment          = "ICT_FVG";  // Commentaire des ordres
+
+input group "== Alertes Telegram =="
+input bool    InpUseTelegram      = true;       // Envoyer les alertes sur Telegram
+input string  InpTgToken          = "";         // Token du bot (@BotFather)
+input string  InpTgChatId         = "";         // Chat ID (getUpdates)
+input bool    InpTgTestOnInit     = true;       // Envoyer un message test au démarrage
+input bool    InpUsePush          = false;      // Aussi notifier l'app MT5 (SendNotification)
 
 input group "== Biais / Tendance (H4) =="
 enum ENUM_BIAS_MODE { BIAS_STRUCTURE=0, BIAS_EMA=1 };
@@ -126,8 +133,14 @@ int OnInit()
    // Récupère une éventuelle position déjà ouverte par cet EA
    AdoptExistingPosition();
 
+   // Message test Telegram pour vérifier le câblage tout de suite
+   if(InpUseTelegram && InpTgTestOnInit)
+      SendTelegram("ICT EA connecte sur " + _Symbol + " (" +
+                   (InpTradingEnabled ? "trading AUTO" : "ALERTE seule") + "). Pret a te prevenir.");
+
    Print("ICT IRL->ERL FVG EA initialisé sur ", _Symbol,
-         " | Magic=", InpMagic, " | Trading=", (InpTradingEnabled?"ON":"OFF"));
+         " | Magic=", InpMagic, " | Trading=", (InpTradingEnabled?"ON":"OFF"),
+         " | Telegram=", (InpUseTelegram?"ON":"OFF"));
    return(INIT_SUCCEEDED);
   }
 
@@ -249,9 +262,8 @@ void OnNewM15Bar()
    // Expiration / invalidation de l'ordre limit non rempli
    ManagePendingExpiry();
 
-   // Un seul trade/ordre à la fois
+   // Un seul trade/ordre à la fois (n'empêche pas l'analyse, mais évite de re-signaler)
    if(HasPositionOrPending()) return;
-   if(!InpTradingEnabled) return;
 
    // Détection FVG M15 sur les 3 dernières M15 clôturées
    double H1=iHigh(_Symbol,PERIOD_M15,3), L1=iLow(_Symbol,PERIOD_M15,3);   // c1
@@ -272,21 +284,99 @@ void OnNewM15Bar()
    bool pdOkLong  = !InpUsePremDisc || discount;
    bool pdOkShort = !InpUsePremDisc || premium;
 
-   // ---- SETUP LONG ----
+   // ---- SETUP LONG (toutes confirmations) ----
    if(bias==1 && h4BullValid && h4BullTapped && !h4BullUsed && m15Bull && inKZ && pdOkLong)
      {
-      double entry = L3;            // bord d'entrée du FVG (haut du gap)
+      double entry = L3;                // bord d'entrée du FVG (haut du gap)
       double sl    = H1 - StopBuffer(); // juste sous le FVG (bas du gap)
-      if(sl < entry) PlaceLimit(1, entry, sl);
+      if(sl < entry)
+        {
+         double r   = entry - sl;
+         double tp1 = entry + InpTP1_R*r;
+         double tp2 = entry + InpRR*r;
+         SendSetupAlert(1, entry, sl, tp1, tp2);        // ALERTE Telegram
+         if(InpTradingEnabled) PlaceLimit(1, entry, sl);// trade seulement si activé
+         h4BullUsed = true;                             // une alerte par zone H4
+        }
      }
 
-   // ---- SETUP SHORT ----
+   // ---- SETUP SHORT (toutes confirmations) ----
    if(bias==-1 && h4BearValid && h4BearTapped && !h4BearUsed && m15Bear && inKZ && pdOkShort)
      {
-      double entry = H3;            // bord d'entrée du FVG (bas du gap)
+      double entry = H3;                // bord d'entrée du FVG (bas du gap)
       double sl    = L1 + StopBuffer(); // juste au-dessus du FVG (haut du gap)
-      if(sl > entry) PlaceLimit(-1, entry, sl);
+      if(sl > entry)
+        {
+         double r   = sl - entry;
+         double tp1 = entry - InpTP1_R*r;
+         double tp2 = entry - InpRR*r;
+         SendSetupAlert(-1, entry, sl, tp1, tp2);         // ALERTE Telegram
+         if(InpTradingEnabled) PlaceLimit(-1, entry, sl); // trade seulement si activé
+         h4BearUsed = true;                               // une alerte par zone H4
+        }
      }
+  }
+
+//====================================================================
+//  ALERTES TELEGRAM
+//====================================================================
+string JsonEscape(string s)
+  {
+   StringReplace(s, "\\", "\\\\");
+   StringReplace(s, "\"", "\\\"");
+   StringReplace(s, "\n", "\\n");
+   StringReplace(s, "\r", "");
+   return s;
+  }
+
+bool SendTelegram(string text)
+  {
+   if(!InpUseTelegram) return false;
+   if(InpTgToken=="" || InpTgChatId=="")
+     {
+      Print("Telegram non configure (token / chat_id manquant).");
+      return false;
+     }
+   string url  = "https://api.telegram.org/bot" + InpTgToken + "/sendMessage";
+   string json = "{\"chat_id\":\"" + InpTgChatId + "\",\"text\":\"" + JsonEscape(text) +
+                 "\",\"disable_web_page_preview\":true}";
+
+   char post[];
+   int total = StringToCharArray(json, post, 0, WHOLE_ARRAY, CP_UTF8);
+   if(total>0) ArrayResize(post, total-1); // retire le zero terminal
+
+   char   result[];
+   string resHeaders;
+   ResetLastError();
+   int res = WebRequest("POST", url, "Content-Type: application/json\r\n", 5000, post, result, resHeaders);
+   if(res==-1)
+     {
+      int err = GetLastError();
+      PrintFormat("WebRequest echec (%d). Autorise l'URL https://api.telegram.org dans "
+                  "Outils > Options > Expert Advisors > 'Autoriser WebRequest'.", err);
+      return false;
+     }
+   if(res!=200)
+      PrintFormat("Telegram a repondu %d : %s", res, CharArrayToString(result));
+   return (res==200);
+  }
+
+//  Compose et envoie l'alerte de setup complet (texte ASCII pour eviter tout souci d'encodage)
+void SendSetupAlert(int dir, double entry, double sl, double tp1, double tp2)
+  {
+   string d   = (dir==1) ? "LONG" : "SHORT";
+   string pd  = (dir==1) ? "Discount" : "Premium";
+   string txt = "SETUP " + d + " ICT - " + _Symbol + "\n";
+   txt += "Toutes confirmations OK (Killzone + FVG H4 tape + FVG M15 + " + pd + ")\n";
+   txt += "Entree limit : " + DoubleToString(entry, _Digits) + "\n";
+   txt += "SL : " + DoubleToString(sl, _Digits) + "\n";
+   txt += "TP1 (1R -> BE + " + DoubleToString(InpPartialPct,0) + "%) : " + DoubleToString(tp1, _Digits) + "\n";
+   txt += "TP2 (2R) : " + DoubleToString(tp2, _Digits) + "\n";
+   txt += "RR 1:" + DoubleToString(InpRR,1);
+
+   Print(txt);
+   SendTelegram(txt);
+   if(InpUsePush) SendNotification(txt);
   }
 
 //====================================================================
