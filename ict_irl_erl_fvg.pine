@@ -77,6 +77,12 @@ colBull  = input.color(color.new(#26a69a, 0), "Couleur haussière", group=grpUI)
 colBear  = input.color(color.new(#ef5350, 0), "Couleur baissière", group=grpUI)
 colKZ    = input.color(color.new(#ffb74d, 88), "Couleur killzone", group=grpUI)
 
+grpAlert = "8 · Alertes"
+alertFullSetup = input.bool(true,  "Alerte SETUP COMPLET (toutes confirmations)", group=grpAlert,
+     tooltip="Se déclenche quand FVG H4 tapé + FVG M15 même sens + Killzone + Premium/Discount sont réunis. C'est l'alerte à envoyer sur Telegram.")
+alertM15Heads  = input.bool(false, "Alerte pré-signal (FVG M15 en Killzone)", group=grpAlert,
+     tooltip="Alerte plus précoce, moins stricte. Désactivée par défaut pour éviter le bruit.")
+
 // ─────────────────────────────────────────────────────────────────────────────────────
 //  DONNÉES HTF (H4) — non-repaint : on n'agit que sur bougie HTF clôturée
 // ─────────────────────────────────────────────────────────────────────────────────────
@@ -327,6 +333,17 @@ if longSignal
         label.new(bar_index, low, "▲ LONG", style=label.style_label_up, color=color.new(colBull, 0),
              textcolor=color.white, size=size.small, yloc=yloc.belowbar)
         h4BullUsed := true
+        if alertFullSetup
+            rL   = entry - stop
+            tp1L = entry + tp1R * rL
+            tp2L = entry + rr   * rL
+            alert("🟢 SETUP LONG ICT — " + syminfo.ticker + " (" + timeframe.period + ")" +
+                 "\nToutes confirmations OK ✓ (Killzone + FVG H4 tapé + FVG M15 + Discount)" +
+                 "\nEntrée limit : " + str.tostring(entry, format.mintick) +
+                 "\nSL : " + str.tostring(stop, format.mintick) +
+                 "\nTP1 (1R → BE + " + str.tostring(partPct, "#") + "%) : " + str.tostring(tp1L, format.mintick) +
+                 "\nTP2 (2R) : " + str.tostring(tp2L, format.mintick) +
+                 "\nRR 1:" + str.tostring(rr, "#.#"), alert.freq_once_per_bar_close)
 
 if shortSignal
     entry = high           // bord d'entrée du FVG M15 (bas du gap) → ordre limit
@@ -336,6 +353,17 @@ if shortSignal
         label.new(bar_index, high, "▼ SHORT", style=label.style_label_down, color=color.new(colBear, 0),
              textcolor=color.white, size=size.small, yloc=yloc.abovebar)
         h4BearUsed := true
+        if alertFullSetup
+            rS   = stop - entry
+            tp1S = entry - tp1R * rS
+            tp2S = entry - rr   * rS
+            alert("🔴 SETUP SHORT ICT — " + syminfo.ticker + " (" + timeframe.period + ")" +
+                 "\nToutes confirmations OK ✓ (Killzone + FVG H4 tapé + FVG M15 + Premium)" +
+                 "\nEntrée limit : " + str.tostring(entry, format.mintick) +
+                 "\nSL : " + str.tostring(stop, format.mintick) +
+                 "\nTP1 (1R → BE + " + str.tostring(partPct, "#") + "%) : " + str.tostring(tp1S, format.mintick) +
+                 "\nTP2 (2R) : " + str.tostring(tp2S, format.mintick) +
+                 "\nRR 1:" + str.tostring(rr, "#.#"), alert.freq_once_per_bar_close)
 
 // Marqueurs de tap H4 (info)
 plotshape(h4BullValid and h4BullTapped and not h4BullTapped[1] ? low : na, "Tap H4 Bull",
@@ -354,10 +382,10 @@ m15FvgKZ  = m15BullKZ or m15BearKZ
 alertcondition(m15FvgKZ, "FVG M15 en Killzone",
      "FVG M15 en Killzone sur {{ticker}} {{interval}} @ {{close}}")
 
-if m15FvgKZ
+if m15FvgKZ and alertM15Heads
     dirTxt = m15BullKZ ? "HAUSSIER" : "BAISSIER"
     dirEmo = m15BullKZ ? "🟢" : "🔴"
-    alert(dirEmo + " FVG M15 en Killzone (" + dirTxt + ")" +
+    alert(dirEmo + " Pré-signal : FVG M15 en Killzone (" + dirTxt + ")" +
          "\nActif : " + syminfo.ticker + "  (" + timeframe.period + ")" +
          "\nPrix : " + str.tostring(close, format.mintick) +
          "\nBiais H4 : " + (isBull ? "haussier" : isBear ? "baissier" : "neutre") +
@@ -365,16 +393,10 @@ if m15FvgKZ
                                        (h4BearTapped ? "tapée ✓" : "non tapée")),
          alert.freq_once_per_bar_close)
 
-// Alertes de setup complet (entrée)
-alertcondition(longSignal,  "ICT LONG",  "Signal LONG ICT : FVG H4 tapé + FVG M15 en Killzone (Discount).")
-alertcondition(shortSignal, "ICT SHORT", "Signal SHORT ICT : FVG H4 tapé + FVG M15 en Killzone (Premium).")
-
-if longSignal
-    alert("ICT LONG " + syminfo.ticker + " @ " + str.tostring(close, format.mintick) +
-         " | RR 1:" + str.tostring(rr, "#.#"), alert.freq_once_per_bar_close)
-if shortSignal
-    alert("ICT SHORT " + syminfo.ticker + " @ " + str.tostring(close, format.mintick) +
-         " | RR 1:" + str.tostring(rr, "#.#"), alert.freq_once_per_bar_close)
+// Conditions nommées (pour créer une alerte ciblée si tu préfères ne pas utiliser
+// « Any alert() function call »). Le message riche avec les niveaux passe par alert().
+alertcondition(longSignal,  "ICT LONG",  "SETUP LONG ICT confirmé sur {{ticker}} {{interval}} @ {{close}}")
+alertcondition(shortSignal, "ICT SHORT", "SETUP SHORT ICT confirmé sur {{ticker}} {{interval}} @ {{close}}")
 
 // ─────────────────────────────────────────────────────────────────────────────────────
 //  TABLEAU DE BORD
